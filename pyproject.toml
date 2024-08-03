@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "codeforces-parser-bot"
+version = "0.1.0"
+description = ""
+authors = ["Dmitry <kde98@mail.ru>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+requests = "^2.32.3"
+sqlalchemy = "^2.0.31"
+python-dotenv = "^1.0.1"
+python-telegram-bot = "12.8"
+pytest = "^8.3.2"
+psycopg2-binary = "^2.9.9"
+psycopg2 = "^2.9.9"
+apscheduler = "^3.10.4"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
