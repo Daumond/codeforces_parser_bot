@@ -1,29 +1,88 @@
-# Codeforces Telegram Bot
+# Codeforces Problem Parser and Telegram Bot
 
 ## Описание
 
-Этот проект реализует Telegram-бота для поиска задач с сайта Codeforces по сложности и темам.
+Проект предназначен для парсинга задач с сайта Codeforces, сохранения их в базу данных и предоставления возможности поиска задач через Telegram-бота.
 
 ## Установка
 
-1. Клонируйте репозиторий.
-2. Создайте и активируйте виртуальное окружение.
-3. Установите зависимости:
+1. Клонируйте репозиторий:
 
-```bash
-pip install -r requirements.txt
-```
+    ```bash
+    git clone https://github.com/your-repo/codeforces-parser-bot.git
+    cd codeforces-parser-bot
+    ```
 
-4. Настройте переменные окружения в файле docker-compose.yml:
+2. Создайте файл `.env` из `sample.env` и заполните его 
 
-* POSTGRES_USER: имя пользователя базы данных  
-* POSTGRES_PASSWORD: пароль пользователя базы данных  
-* POSTGRES_DB: имя базы данных  
-* TELEGRAM_BOT_TOKEN: токен вашего Telegram-бота  
 
-5. Запустите проект с использованием Docker Compose:  
+
+3. Запустите проект с помощью Docker:
+
+    ```bash
+    docker-compose up --build
+    ```
 
 ## Использование
-Запустите Telegram и найдите вашего бота. Используйте команду /start.
-Используйте /find чтобы найти задачи по сложности и теме.   
-Формат: /find <сложность> <тема>
+
+1. Запустите скрипт для парсинга задач:
+
+    ```bash
+    docker-compose run --rm app python codeforces_parser.py
+    ```
+
+2. Запустите Telegram-бота:
+
+    ```bash
+    docker-compose run --rm app python bot.py
+    ```
+
+## Пример запроса и ответа Telegram-бота
+
+- **Запрос:**
+
+    ```plaintext
+    /find
+    ```
+
+- **Ответ:**
+
+    ```plaintext
+    Привет! Выберите сложность задачи (например, 800, 1200 и т.д.):
+    ```
+
+- **Запрос:**
+
+    ```plaintext
+    1200
+    ```
+
+- **Ответ:**
+
+    ```plaintext
+    Выберите тему задачи (например, 'math', 'dp' и т.д.):
+    ```
+
+- **Запрос:**
+
+    ```plaintext
+    math
+    ```
+
+- **Ответ:**
+
+    ```plaintext
+    Вот задачи, соответствующие вашему запросу:
+    Название: Sample Problem
+    Сложность: 1200
+    Количество решений: 10
+    Ссылка: https://codeforces.com/contest/1001/problem/A
+    ```
+
+## Тестирование
+
+Запустите тесты с помощью pytest:
+
+```bash
+docker-compose run --rm app pytest
+```
