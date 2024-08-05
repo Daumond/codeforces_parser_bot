@@ -1,69 +1,73 @@
 import os
+import telegram
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
+from database import Session, DatabaseManager, Problem, Tag
 from dotenv import load_dotenv
-from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
-from database import Session, Problem, Tag
 
-# Загрузка переменных окружения из .env файла
 load_dotenv()
 
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+updater = Updater(TELEGRAM_BOT_TOKEN, use_context=True)
+dispatcher = updater.dispatcher
+
+# Define conversation states
+CHOOSE_DIFFICULTY, CHOOSE_TAG = range(2)
 
 
-def start(update: Update, context: CallbackContext):
-    update.message.reply_text(
-        'Привет! Я бот Codeforces. '
-        'Используйте /find чтобы найти задачи по сложности и теме. Формат: /find <сложность> <тема>')
+def start(update, context):
+    update.message.reply_text("Привет! Выберите сложность задачи (например, 800, 1200 и т.д.):")
+    return CHOOSE_DIFFICULTY
 
 
-def find(update: Update, context: CallbackContext):
-    args = context.args
-    if len(args) < 1:
-        update.message.reply_text(
-            'Пожалуйста, укажите сложность и, опционально, тему. Формат: /find <сложность> <тема>')
-        return
+def choose_difficulty(update, context):
+    context.user_data['difficulty'] = int(update.message.text)
+    update.message.reply_text("Выберите тему задачи (например, 'math', 'dp' и т.д.):")
+    return CHOOSE_TAG
 
-    try:
-        difficulty = int(args[0])
-    except ValueError:
-        update.message.reply_text('Сложность должна быть числом. Формат: /find <сложность> <тема>')
-        return
 
-    topic = args[1] if len(args) > 1 else None
+def choose_tag(update, context):
+    tag = update.message.text
+    difficulty = context.user_data['difficulty']
 
     session = Session()
-    query = session.query(Problem).filter(Problem.rating == difficulty)
+    db_manager = DatabaseManager(session)
+    problems = session.query(Problem).join(Problem.tags).filter(Problem.rating == difficulty, Tag.name == tag).limit(
+        10).all()
 
-    if topic:
-        query = query.join(Problem.tags).filter(Tag.name.ilike(f'%{topic}%'))
+    if not problems:
+        update.message.reply_text("К сожалению, задач с указанной сложностью и темой не найдено.")
+        return ConversationHandler.END
 
-    problems = query.limit(10).all()
-    response = ""
+    response = "Вот задачи, соответствующие вашему запросу:\n"
     for problem in problems:
-        response += \
-            (f"{problem.name} "
-             f"(ID: {problem.contest_id}-{problem.index}, "
-             f"Rating: {problem.rating}, "
-             f"Solved Count: {problem.solved_count})\n")
+        response += f"Название: {problem.name}\n"
+        response += f"Сложность: {problem.rating}\n"
+        response += f"Количество решений: {problem.solved_count}\n"
+        response += f"Ссылка: https://codeforces.com/contest/{problem.contest_id}/problem/{problem.index}\n"
+        response += "\n"
 
-    if response:
-        update.message.reply_text(response)
-    else:
-        update.message.reply_text('Задачи не найдены.')
-
-    session.close()
+    update.message.reply_text(response)
+    return ConversationHandler.END
 
 
-def main():
-    updater = Updater(TELEGRAM_BOT_TOKEN, use_context=True)
-    dp = updater.dispatcher
-
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("find", find))
-
-    updater.start_polling()
-    updater.idle()
+def cancel(update, context):
+    update.message.reply_text("Процесс поиска задачи был отменен.")
+    return ConversationHandler.END
 
 
-if __name__ == '__main__':
-    main()
+start_handler = CommandHandler('start', start)
+dispatcher.add_handler(start_handler)
+
+conv_handler = ConversationHandler(
+    entry_points=[CommandHandler('find', start)],
+    states={
+        CHOOSE_DIFFICULTY: [MessageHandler(Filters.text & ~Filters.command, choose_difficulty)],
+        CHOOSE_TAG: [MessageHandler(Filters.text & ~Filters.command, choose_tag)],
+    },
+    fallbacks=[CommandHandler('cancel', cancel)]
+)
+
+dispatcher.add_handler(conv_handler)
+
+updater.start_polling()
+updater.idle()
